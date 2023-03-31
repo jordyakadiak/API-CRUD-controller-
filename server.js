@@ -66,69 +66,140 @@ function getAllTasks(req, res) {
     res.end(JSON.stringify(results));
   });
 }
+// Récupérer toutes les tâches
+async function getAllTasks(req, res) {
+  try {
+    const [rows] = await dbConn.promise().query("SELECT * FROM todolist");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(rows));
+  } catch (err) {
+    console.error(err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "Une erreur serveur s'est produite lors de la récupération de toutes les tâches.",
+      })
+    );
+  }
+}
 
 // Récupérer une tâche spécifique
-function getTask(req, res, taskId) {
-  dbConn.query(
-    "SELECT * FROM todolist WHERE id = ?",
-    [taskId],
-    function (err, results, fields) {
-      if (err) throw err;
+async function getTask(req, res, taskId) {
+  try {
+    const [rows] = await dbConn
+      .promise()
+      .execute("SELECT * FROM todolist WHERE id = ?", [taskId]);
+    if (rows.length === 0) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "La tâche demandée n'existe pas." }));
+    } else {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(results));
+      res.end(JSON.stringify(rows));
     }
-  );
+  } catch (err) {
+    console.error(err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "Une erreur serveur s'est produite lors de la récupération de la tâche.",
+      })
+    );
+  }
 }
 
 // Créer une nouvelle tâche
-function createTask(req, res) {
-  let body = "";
-  req.on("data", function (chunk) {
-    body += chunk.toString();
-  });
-  req.on("end", function () {
-    const task = JSON.parse(body);
-    dbConn.query(
-      "INSERT INTO todolist (titre) VALUES (?)",
-      [task.titre],
-      function (err, results, fields) {
-        if (err) throw err;
-        res.writeHead(201, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ id: results.insertId, ...task }));
-      }
+async function createTask(req, res) {
+  try {
+    let body = "";
+    req.on("data", function (chunk) {
+      body += chunk.toString();
+    });
+    req.on("end", async function () {
+      const task = JSON.parse(body);
+      const [result] = await dbConn
+        .promise()
+        .execute("INSERT INTO todolist (titre) VALUES (?)", [task.titre]);
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ id: result.insertId, ...task }));
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "Une erreur serveur s'est produite lors de la création de la tâche.",
+      })
     );
-  });
+  }
 }
 
 // Mettre à jour une tâche existante
-function updateTask(req, res, taskId) {
-  let body = "";
-  req.on("data", function (chunk) {
-    body += chunk.toString();
-  });
-  req.on("end", function () {
-    const task = JSON.parse(body);
-    dbConn.query(
-      "UPDATE todolist SET titre = ? WHERE id = ?",
-      [task.titre, taskId],
-      function (err, results, fields) {
-        if (err) throw err;
+async function updateTask(req, res, taskId) {
+  try {
+    let body = "";
+    req.on("data", function (chunk) {
+      body += chunk.toString();
+    });
+    req.on("end", async function () {
+      const task = JSON.parse(body);
+      const [result] = await dbConn
+        .promise()
+        .execute("UPDATE todolist SET titre = ? WHERE id = ?", [
+          task.titre,
+          taskId,
+        ]);
+      if (result.affectedRows === 0) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: "La tâche à mettre à jour n'a pas été trouvée.",
+          })
+        );
+      } else {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ id: taskId, ...task }));
       }
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "Une erreur serveur s'est produite lors de la mise à jour de la tâche.",
+      })
     );
-  });
+  }
 }
 
 // Supprimer une tâche spécifique
-function deleteTask(req, res, taskId) {
-  dbConn.query(
-    "DELETE FROM todolist WHERE id = ?",
-    [taskId],
-    function (err, results, fields) {
-      if (err) throw err;
+async function deleteTask(req, res, taskId) {
+  try {
+    const [result] = await dbConn
+      .promise()
+      .query("DELETE FROM todolist WHERE id = ?", [taskId]);
+    if (result.affectedRows === 0) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: "La tâche demandée à supprimer n'a pas été trouvée.",
+        })
+      );
+    } else {
       res.writeHead(204);
       res.end();
     }
-  );
+  } catch (err) {
+    console.error(err.message);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          "Une erreur serveur s'est produite lors de la suppression de la tâche.",
+      })
+    );
+  }
 }
