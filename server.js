@@ -1,6 +1,5 @@
-let mysql = require("mysql");
+let mysql = require("mysql"); 
 
-// Connect to database
 let connection = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -8,78 +7,92 @@ let connection = mysql.createConnection({
   database: "todolist",
 });
 
-// Get all tasks
-async function getAllTasks() {
-  try {
-    const [rows] = await connection.promise().query("SELECT * FROM todolist");
-    return rows;
-  } catch (err) {
-    console.error(err.message);
-    throw err;
-  }
+function getAllTasks() {
+  return new Promise((resolve, reject) => {
+    connection.query("SELECT * FROM todolist", function (err, results, fields) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
+    });
+  });
 }
 
-// Get a specific task
-async function getTask(taskId) {
-  try {
-    const [rows] = await connection
-      .promise()
-      .execute("SELECT * FROM todolist WHERE id = ?", [taskId]);
-    if (rows.length === 0) {
-      throw new Error("La tâche demandée n'existe pas.");
-    }
-    return rows[0];
-  } catch (err) {
-    console.error(err.message);
-    throw err;
-  }
+function getTask(taskId) {
+  return new Promise((resolve, reject) => {
+    connection.execute("SELECT * FROM todolist WHERE id = ?", [taskId], function (
+      err,
+      rows,
+      fields
+    ) {
+      if (err) {
+        reject(err);
+      } else {
+        if (rows.length === 0) {
+          reject("La tâche demandée n'existe pas.");
+        } else {
+          resolve(rows[0]);
+        }
+      }
+    });
+  });
 }
 
-// Create a task
-async function createTask(task) {
-  try {
-    const [result] = await connection
-      .promise()
-      .execute("INSERT INTO todolist (titre) VALUES (?)", [task.titre]);
-    return { id: result.insertId, ...task };
-  } catch (err) {
-    console.error(err.message);
-    throw err;
-  }
+function createTask(task) {
+  return new Promise((resolve, reject) => {
+    connection.execute(
+      "INSERT INTO todolist (titre) VALUES (?)",
+      [task.titre],
+      function (err, result) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id: result.insertId, ...task });
+        }
+      }
+    );
+  });
 }
 
-// Update a task
-async function updateTask(taskId, task) {
-  try {
-    const [result] = await connection
-      .promise()
-      .execute("UPDATE todolist SET titre = ? WHERE id = ?", [
-        task.titre,
-        taskId,
-      ]);
-    if (result.affectedRows === 0) {
-      throw new Error("La tâche à mettre à jour n'a pas été trouvée.");
-    }
-    return { id: taskId, ...task };
-  } catch (err) {
-    console.error(err.message);
-    throw err;
-  }
+function updateTask(taskId, task) {
+  return new Promise((resolve, reject) => {
+    connection.execute(
+      "UPDATE todolist SET titre = ? WHERE id = ?",
+      [task.titre, taskId],
+      function (err, result) {
+        if (err) {
+          reject(err);
+        } else {
+          if (result.affectedRows === 0) {
+            reject("La tâche à mettre à jour n'a pas été trouvée.");
+          } else {
+            resolve({ id: taskId, ...task });
+          }
+        }
+      }
+    );
+  });
 }
 
-// Delete a task
-async function deleteTask(taskId) {
-  try {
-    const [result] = await connection
-      .promise()
-      .query("DELETE FROM todolist WHERE id = ?", [taskId]);
-    if (result.affectedRows === 0) {
-      throw new Error("La tâche demandée à supprimer n'a pas été trouvée.");
-    }
-  } catch (err) {
-    console.error(err.message);
-    throw err;
-  }
+function deleteTask(taskId) {
+  return new Promise((resolve, reject) => {
+    connection.execute(
+      "DELETE FROM todolist WHERE id = ?",
+      [taskId],
+      function (err, result) {
+        if (err) {
+          reject(err);
+        } else {
+          if (result.affectedRows === 0) {
+            reject("La tâche demandée à supprimer n'a pas été trouvée.");
+          } else {
+            resolve();
+          }
+        }
+      }
+    );
+  });
 }
 
 module.exports = {
